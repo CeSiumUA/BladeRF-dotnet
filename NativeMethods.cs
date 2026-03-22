@@ -21,6 +21,7 @@
  */
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -61,7 +62,7 @@ internal readonly struct StrPtr
 }
 
 [StructLayout(LayoutKind.Sequential)]
-internal readonly struct StructArray<T> where T : struct
+internal readonly struct StructArray<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] T> where T : struct
 {
     private readonly IntPtr ptr;
 
@@ -69,7 +70,7 @@ internal readonly struct StructArray<T> where T : struct
 }
 
 [StructLayout(LayoutKind.Sequential)]
-internal readonly struct StructPtr<T> where T : struct
+internal readonly struct StructPtr<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] T> where T : struct
 {
     private readonly IntPtr ptr;
 
