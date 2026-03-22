@@ -64,6 +64,7 @@ public class TXStream : IDisposable
         (sampleSize, headerSize) = format switch
         {
             Format.SC16_Q11 => (4, 0),
+            Format.SC16_Q11_PACKED => (4, 0),
             Format.SC16_Q11_META => (4, 16),
             Format.PACKET_META => throw new NotSupportedException("Packet format"),
             Format.SC8_Q7 => (2, 0),
