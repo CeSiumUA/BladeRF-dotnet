@@ -44,6 +44,7 @@ public enum GainMode
 public enum Format
 {
     SC16_Q11,
+    SC16_Q11_PACKED,
     SC16_Q11_META,
     PACKET_META,
     SC8_Q7,

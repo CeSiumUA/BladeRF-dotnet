@@ -354,6 +354,14 @@ internal unsafe static class NativeMethods
     const string DllName = "bladeRF";
 
     public static bool Loaded { get; }
+    private static readonly Lazy<bool> SupportsSc16Q11PackedFormat = new(() =>
+    {
+        if (!Loaded)
+            return false;
+
+        version(out var libVersion);
+        return libVersion.major > 2 || (libVersion.major == 2 && libVersion.minor >= 6);
+    });
 
     static NativeMethods()
     {
@@ -367,6 +375,23 @@ internal unsafe static class NativeMethods
         catch (DllNotFoundException)
         {
         }
+    }
+
+    private static int ToNativeFormat(Format format)
+    {
+        if (SupportsSc16Q11PackedFormat.Value)
+            return (int)format;
+
+        return format switch
+        {
+            Format.SC16_Q11 => 0,
+            Format.SC16_Q11_PACKED => throw new NotSupportedException("BLADERF_FORMAT_SC16_Q11_PACKED requires libbladeRF 2.6.0 or newer."),
+            Format.SC16_Q11_META => 1,
+            Format.PACKET_META => 2,
+            Format.SC8_Q7 => 3,
+            Format.SC8_Q7_META => 4,
+            _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unknown format")
+        };
     }
 
     private static nint Resolve(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
@@ -544,9 +569,19 @@ internal unsafe static class NativeMethods
 
 
 
-    [DllImport(DllName, CharSet = CharSet.Ansi, EntryPoint = "bladerf_interleave_stream_buffer")] public static extern int interleave_stream_buffer(ChannelLayout layout, Format format, uint buffer_size, IntPtr samples);
+    [DllImport(DllName, CharSet = CharSet.Ansi, EntryPoint = "bladerf_interleave_stream_buffer")] private static extern int interleave_stream_buffer_native(ChannelLayout layout, int format, uint buffer_size, IntPtr samples);
 
-    [DllImport(DllName, CharSet = CharSet.Ansi, EntryPoint = "bladerf_deinterleave_stream_buffer")] public static extern int deinterleave_stream_buffer(ChannelLayout layout, Format format, uint buffer_size, IntPtr samples);
+    public static int interleave_stream_buffer(ChannelLayout layout, Format format, uint buffer_size, IntPtr samples)
+    {
+        return interleave_stream_buffer_native(layout, ToNativeFormat(format), buffer_size, samples);
+    }
+
+    [DllImport(DllName, CharSet = CharSet.Ansi, EntryPoint = "bladerf_deinterleave_stream_buffer")] private static extern int deinterleave_stream_buffer_native(ChannelLayout layout, int format, uint buffer_size, IntPtr samples);
+
+    public static int deinterleave_stream_buffer(ChannelLayout layout, Format format, uint buffer_size, IntPtr samples)
+    {
+        return deinterleave_stream_buffer_native(layout, ToNativeFormat(format), buffer_size, samples);
+    }
 
 
 
@@ -556,7 +591,12 @@ internal unsafe static class NativeMethods
 
 
 
-    [DllImport(DllName, CharSet = CharSet.Ansi, EntryPoint = "bladerf_sync_config")] public static extern int sync_config(Device dev, ChannelLayout layout, Format format, uint num_buffers, uint buffer_size, uint num_transfers, uint stream_timeout);
+    [DllImport(DllName, CharSet = CharSet.Ansi, EntryPoint = "bladerf_sync_config")] private static extern int sync_config_native(Device dev, ChannelLayout layout, int format, uint num_buffers, uint buffer_size, uint num_transfers, uint stream_timeout);
+
+    public static int sync_config(Device dev, ChannelLayout layout, Format format, uint num_buffers, uint buffer_size, uint num_transfers, uint stream_timeout)
+    {
+        return sync_config_native(dev, layout, ToNativeFormat(format), num_buffers, buffer_size, num_transfers, stream_timeout);
+    }
 
     [DllImport(DllName, CharSet = CharSet.Ansi, EntryPoint = "bladerf_sync_tx")] public static extern int sync_tx(Device dev, IntPtr samples, uint num_samples, ref Metadata metadata, uint timeout_ms);
 
@@ -564,7 +604,12 @@ internal unsafe static class NativeMethods
 
 
 
-    [DllImport(DllName, CharSet = CharSet.Ansi, EntryPoint = "bladerf_init_stream")] public static extern int init_stream(out Stream stream, Device dev, IntPtr/*StreamCallback*/ callback, out StructArray<IntPtr> buffers, nuint num_buffers, Format format, nuint samples_per_buffer, nuint num_transfers, IntPtr user_data);
+    [DllImport(DllName, CharSet = CharSet.Ansi, EntryPoint = "bladerf_init_stream")] private static extern int init_stream_native(out Stream stream, Device dev, IntPtr/*StreamCallback*/ callback, out StructArray<IntPtr> buffers, nuint num_buffers, int format, nuint samples_per_buffer, nuint num_transfers, IntPtr user_data);
+
+    public static int init_stream(out Stream stream, Device dev, IntPtr callback, out StructArray<IntPtr> buffers, nuint num_buffers, Format format, nuint samples_per_buffer, nuint num_transfers, IntPtr user_data)
+    {
+        return init_stream_native(out stream, dev, callback, out buffers, num_buffers, ToNativeFormat(format), samples_per_buffer, num_transfers, user_data);
+    }
 
     [DllImport(DllName, CharSet = CharSet.Ansi, EntryPoint = "bladerf_stream")] public static extern int stream(Stream stream, ChannelLayout layout);
 
